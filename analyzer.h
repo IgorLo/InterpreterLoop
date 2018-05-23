@@ -1,0 +1,6 @@
+#ifndef INTERPRETER_LOOP_ANALYZER_H
+#define INTERPRETER_LOOP_ANALYZER_H
+
+void start(char *p);
+
+#endif //INTERPRETER_LOOP_ANALYZER_H

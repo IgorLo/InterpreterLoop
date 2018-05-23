@@ -1,0 +1,7 @@
+LOOP x99 DO
+    x1 := x1 + 1
+    LOOP x1 DO
+        x2 := x2 + 1
+    END
+END
+x3 := x3 + 5
