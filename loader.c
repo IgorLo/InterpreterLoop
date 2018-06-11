@@ -1,19 +1,20 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <setjmp.h>
-#include <mem.h>
 
 #include "main.h"
 
-#define SIZE 5000
-#define SIZE_LEXEM 100
+#define TOTAL_MEMORY_SIZE 5000
+#define LEXEME_MEMORY_SIZE 100
+
 /*
  * Объявление переменных
  */
+
 struct variable {
-    char name[SIZE_LEXEM];
+    char name[LEXEME_MEMORY_SIZE];
     int value;
 };
+
 char *pointer_program;
 
 //-------------------------------------------------------------
@@ -28,24 +29,24 @@ int readFile(char *);
 int main(int argc, char *argv[]) {
 
     if (argc != 3) {
-        printf("Use format: <execute file>.exe <text program file>.txt <names of out variables>.txt");
+        printf("Wrong format.\nUse: <executable file>.exe <out variables>.txt");
         exit(1);
     }
 
-    char *file_program = argv[1];
-    char *file_variables = argv[2];
+    char *filename_program = argv[1];
+    char *filename_variables = argv[2];
 
-    if (!(pointer_program = (char *) malloc(SIZE))) {
-        printf("Error allocating memory!");
+    if (!(pointer_program = (char *) malloc(TOTAL_MEMORY_SIZE))) {
+        printf("Unable to allocate the memory.");
         exit(1);
     }
     //Загрузка программы
-    if (!readFile(file_program)) {
-        printf("Ne udalos load program"); //TODO
+    if (!readFile(filename_program)) {
+        printf("Unable to read the program file.");
         exit(1);
     }
 
-    execute(pointer_program, file_variables);
+    execute(pointer_program, filename_variables);
 
     return 0;
 }
@@ -61,11 +62,11 @@ int readFile(char *file_name) {
         *point = (char) getc(file);
         point++;
         i++;
-        if (i == k*SIZE){
+        if (i == k*TOTAL_MEMORY_SIZE){
             k++;
-            pointer_program = (char*) realloc(pointer_program, (size_t) (k * SIZE));
+            pointer_program = (char*) realloc(pointer_program, (size_t) (k * TOTAL_MEMORY_SIZE));
             point = pointer_program;
-            point+=i;
+            point += i;
         }
     } while (!feof(file));
     *(point - 1) = 0;

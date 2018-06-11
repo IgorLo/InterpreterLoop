@@ -118,6 +118,9 @@ void execute(char *to_program, char *file) {
             }
         }
     } while (token.id != FINISHED);
+    if (loop_index != 0){
+        printError("Loop is not closed with \"END\"");
+    }
     writeResult(file);
 }
 
@@ -129,9 +132,14 @@ void writeResult(char *file_name) {
     char *t = name;
     do {
         *t = (char) getc(file_in);
-        if (*t == '\n') {
+        if (*t == '\n' || feof(file_in)) {
             *t = '\0';
-            fprintf(file_out, "%s = %d\n", findVariable(name)->name, findVariable(name)->value);
+            struct variable *temp_variable = findVariable(name);
+            if (temp_variable == NULL){
+                t++;
+                continue;
+            }
+            fprintf(file_out, "%s = %d\n", temp_variable->name, temp_variable->value);
             t = name;
         } else{
             t++;
@@ -216,21 +224,47 @@ void loop_push(struct loop_stack i) {
 
 struct loop_stack loop_pop() {
     loop_index--;
-    if (loop_index < 0) printError("END does not match LOOP"); //TODO
+    if (loop_index < 0) printError("END does not match closing construction");
     return (loops[loop_index]);
 }
 
 void executeLoop() {
     struct loop_stack i;
 
-    readToken(); //Чтение управляющей переменной
+    readToken(); //Чтение переменной-счётчика
 
     i.source = START_POSITION_LOOP;
-    i.target = findVariable(token.name)->value;
+
+    struct variable *temp = findVariable(token.name);
+
+    if (temp == NULL){
+        printError("Variable is not initialized.");
+    } else
+        i.target = temp->value;
+
+    if (i.target < i.source){
+        int counter = 0;
+
+        do {
+
+            if (token.id == FINISHED){
+                printError("Syntax error.");
+            }
+            if (token.id == IF || token.id == LOOP){
+                counter++;
+            }
+            if (token.id == END){
+                counter--;
+            }
+            readToken();
+
+        } while (token.id != END || counter != 0);
+        return;
+    }
 
     readToken();
     if (token.id != DO)
-        printError("Wait DO"); //TODO
+        printError("Expected \"DO\" in LOOP construction");
     i.body_cycle = program;
     loop_push(i);
 }
@@ -247,6 +281,7 @@ void executeEnd() {
     program = i.body_cycle; //Цикл
 }
 
+//Выводит ошибку и завершает программу
 void printError(char *err) {
     printf(err);
     exit(1);
@@ -291,6 +326,7 @@ void readToken() {
     //Првоерка разделителя
     if (strchr(":=+-*/%()", *program)) {
         //Ищем знак присваивания
+
         if (*program == ':') {
             *t++ = *program++;
             if (*program == '=') {
@@ -315,6 +351,7 @@ void readToken() {
         return;
     }
 
+    //Проверка на букву
     if (isalpha(*program)) {
         while (!isDelim(*program))
             *t++ = *program++;
@@ -353,18 +390,18 @@ struct variable *findVariable(char *name) {
 struct variable *addVariable(char *name) {
     count_var++;
     pointer_variables = (struct variable *) realloc(pointer_variables, sizeof(struct variable) * count_var);
-    struct variable *start_p = pointer_variables;
+    struct variable *buffer_index = pointer_variables;
 
     int i = 1;
     while (i < count_var) {
-        pointer_variables++;
+        buffer_index++;
         i++;
     }
 
-    struct variable *result = pointer_variables;
+    struct variable *result = buffer_index;
     strcpy(result->name, name);
+    result->value = NULL;
 
-    pointer_variables = start_p;
     return result;
 }
 
@@ -426,9 +463,13 @@ void parentheses(int *result) {
             printError("This is not an expression!"); //TODO
         readToken();
     } else {
+        struct variable *temp = findVariable(token.name);
         switch (token.type) {
             case VARIABLE:
-                *result = findVariable(token.name)->value;
+                if (temp == NULL || temp->value == NULL){
+                    printError("Variable is not initialized.");
+                }
+                *result = temp->value;
                 readToken();
                 return;
             case NUMBER:
