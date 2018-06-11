@@ -206,7 +206,7 @@ void executeElse() {
         do {
             readToken();
             if (token.id == FINISHED)
-                printError("Wait END"); //TODO
+                printError("Syntax error: \"END\" expected.");
         } while (token.id != END);
         putBack();
         skipElse = 0;
@@ -216,7 +216,7 @@ void executeElse() {
 
 void loop_push(struct loop_stack i) {
     if (loop_index > NESTING)
-        printError("The nesting level of the loop is too large"); //TODO
+        printError("The nesting level of the loop is too large.");
 
     loops[loop_index] = i;
     loop_index++;
@@ -224,7 +224,7 @@ void loop_push(struct loop_stack i) {
 
 struct loop_stack loop_pop() {
     loop_index--;
-    if (loop_index < 0) printError("END does not match closing construction");
+    if (loop_index < 0) printError("END does not match closing construction.");
     return (loops[loop_index]);
 }
 
@@ -247,18 +247,26 @@ void executeLoop() {
 
         do {
 
-            if (token.id == FINISHED){
-                printError("Syntax error.");
-            }
-            if (token.id == IF || token.id == LOOP){
-                counter++;
-            }
-            if (token.id == END){
-                counter--;
+            switch (token.id){
+                case FINISHED:
+                    printError("Syntax error.");
+                    break;
+                case IF:
+                    counter++;
+                    break;
+                case LOOP:
+                    counter++;
+                    break;
+                case END:
+                    counter--;
+                    break;
+                default:
+                    break;
             }
             readToken();
 
         } while (token.id != END || counter != 0);
+
         return;
     }
 
@@ -267,6 +275,7 @@ void executeLoop() {
         printError("Expected \"DO\" in LOOP construction");
     i.body_cycle = program;
     loop_push(i);
+
 }
 
 void executeEnd() {
