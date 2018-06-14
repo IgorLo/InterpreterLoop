@@ -231,16 +231,15 @@ struct loop_stack loop_pop() {
 void executeLoop() {
     struct loop_stack i;
 
-    readToken(); //Чтение переменной-счётчика
+    //readToken(); //Чтение переменной-счётчика
 
     i.source = START_POSITION_LOOP;
 
-    struct variable *temp = findVariable(token.name);
+    int loop_iterations = 0;
 
-    if (temp == NULL){
-        printError("Variable is not initialized.");
-    } else
-        i.target = temp->value;
+    calcExpression(&loop_iterations);
+
+    i.target = loop_iterations;
 
     if (i.target < i.source){
         int counter = 0;
@@ -270,7 +269,7 @@ void executeLoop() {
         return;
     }
 
-    readToken();
+    //readToken();
     if (token.id != DO)
         printError("Expected \"DO\" in LOOP construction");
     i.body_cycle = program;
