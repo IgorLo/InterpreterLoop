@@ -219,39 +219,50 @@ void executeIf() {
 
 void skipToElseOrEndif() {
     readToken();
-    while (token.id != ENDIF && token.id != ELSE){
-        if (token.id == IF){
-            if (token.id == FINISHED){
-                printError("ENDIF expected.");
-            }
-            skipToEndif();
+    int count = 0;
+    do {
+        if (token.id == FINISHED){
+            printError("ENDIF expected.");
         }
+        if (token.id == IF)
+            count++;
+        if (token.id == ENDIF)
+            count--;
+        if (count < 0)
+            printError("Syntax error: ENDIF doesn't match closing construction");
         readToken();
-    }
+    } while ((token.id != ENDIF || count!= 0) && (token.id != ELSE || count != 0));
+    if (token.id == ENDIF)
+        return;
+    do {
+        readToken();
+        executeToken();
+    } while (token.id != ENDIF);
 }
 
 void executeToElseOrEndif() {
-    //readToken();
-    while (token.id != ENDIF && token.id != ELSE){
+    readToken();
+    do {
         if (token.id == FINISHED){
             printError("ENDIF expected.");
         }
         executeToken();
         readToken();
-    }
+    } while (token.id != ENDIF && token.id != ELSE);
     if (token.id == ELSE){
         skipToEndif();
     }
 }
 
 void skipToEndif() {
+    int count = 0;
     while (token.id != ENDIF){
-        if (token.id == FINISHED){
-            printError("ENDIF expected.");
-        }
-        if (token.id == IF){
-            skipToEndif();
-        }
+        if (token.id == IF)
+            count++;
+        if (token.id == ENDIF)
+            count--;
+        if (count < 0)
+            printError("Syntax error: ENDIF doesn't match closing construction");
         readToken();
     }
 }
