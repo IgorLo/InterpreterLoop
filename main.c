@@ -19,6 +19,7 @@
 #define END 15
 #define EOL 16
 #define FINISHED 17
+#define ENDIF 18
 
 /*
  * Объявление переменных
@@ -34,7 +35,7 @@ struct lexem {
     int type;
 } token;
 struct command {
-    char name[5];
+    char name[6];
     int id;
 } commands[] = {
         "LOOP", LOOP,
@@ -42,7 +43,8 @@ struct command {
         "IF", IF,
         "THEN", THEN,
         "ELSE", ELSE,
-        "END", END};
+        "END", END,
+        "ENDIF", ENDIF};
 struct loop_stack {
     int source;
     int target;
@@ -54,8 +56,7 @@ struct variable {
     char name[SIZE_LEXEM];
     int value;
 } *pointer_variables; //Указатель на начало памяти хренения переменных
-int skipElse = 0; //Флаг выполнять ли ELSE
-int closeIf = 0; //Флаг закрывать ли IF
+char *outFile;
 
 //-------------------------------------------------------------
 
@@ -76,58 +77,77 @@ void multOrDiv(int *);
 void unary(int *);
 void parentheses(int *);
 void arithmetic(char, int *, int *);
-void executeLoop(), executeEnd(), executeIf(), executeThen(), executeElse();
+void executeLoop(), executeEnd(), executeIf(), executeThen(), executeElse(), executeEndif();
 void writeResult(char*);
+void executeToElseOrEndif();
+void skipToElseOrEndif();
+void executeToken();
+void endProgram();
+void skipToEndif();
 
 //-------------------------------------------------------------
 
+
+
 void execute(char *to_program, char *file) {
     program = to_program;
+    outFile = file;
 
     loop_index = 0;
 
-    do {
+    while (token.id != FINISHED){
         readToken();
-
-        if (token.type == VARIABLE) {
-            assignment();
-        }
-
-        if (token.type == COMMAND) {
-            switch (token.id) {
-                case LOOP:
-                    executeLoop();
-                    break;
-                case IF:
-                    executeIf();
-                    break;
-                case THEN:
-                    executeThen();
-                    break;
-                case ELSE:
-                    executeElse();
-                    break;
-                case END:
-                    if (!closeIf)
-                        executeEnd();
-                    else
-                        closeIf = 0;
-                    break;
-                default:
-                    break;
-            }
-        }
-    } while (token.id != FINISHED);
-    if (loop_index != 0){
-        printError("Loop is not closed with \"END\"");
+        executeToken();
     }
-    writeResult(file);
+    endProgram();
+
 }
+
+void executeToken() {
+    //readToken();
+
+    if (token.id == FINISHED){
+        endProgram();
+    }
+
+    if (token.type == VARIABLE) {
+        assignment();
+    }
+
+    if (token.type == COMMAND) {
+        switch (token.id) {
+            case LOOP:
+                executeLoop();
+                break;
+            case IF:
+                executeIf();
+                break;
+            case THEN:
+                executeThen();
+                break;
+            case ELSE:
+                executeElse();
+                break;
+            case END:
+                executeEnd();
+            case ENDIF:
+                executeEndif();
+            default:
+                break;
+        }
+    }
+}
+
+void executeEndif() {
+
+}
+void executeThen(){}
+void executeElse(){}
 
 void writeResult(char *file_name) {
     FILE *file_in, *file_out;
     file_in = fopen(file_name, "r");
-    file_out = fopen("result.txt", "w");
+    file_out = fopen("../result.txt", "w");
     char name[SIZE_LEXEM];
     char *t = name;
     do {
@@ -159,7 +179,7 @@ void executeIf() {
     char operation;
     calcExpression(&x); //Получаем левое выражение
     if (!strchr("=<>", *token.name)) {
-        printError("Syntax error!"); //Недопустимый оператор TODO
+        printError("Syntax error: \"=, <, >\" expected."); //Недопустимый оператор
         return;
     }
     operation = *token.name;
@@ -182,36 +202,58 @@ void executeIf() {
     }
     if (cond) {  //Если значение IF "истина"
         if (token.id != THEN) {
-            printError("Wait THEN"); //TODO
-            return;
+            printError("Syntax error: THEN expected.");
         }
+        executeToElseOrEndif();
     } else {
-        do {
-            readToken();
-            if (token.id == FINISHED)
-                printError("Wait ELSE or END"); //Прописать ошибку (Ожидался ELSE или END) TODO
-        } while (token.id != ELSE && token.id != END);
-        if (token.id == ELSE)
-            putBack();
+        skipToElseOrEndif();
+//        do {
+//            readToken();
+//            if (token.id == FINISHED)
+//                printError("Syntax error: ELSE or END expected."); //Ожидался ELSE или END
+//        } while (token.id != ELSE && token.id != END);
+//        if (token.id == ELSE)
+//            putBack();
     }
 }
 
-void executeThen() {
-    skipElse = 1;
-    closeIf = 1;
+void skipToElseOrEndif() {
+    readToken();
+    while (token.id != ENDIF && token.id != ELSE){
+        if (token.id == IF){
+            if (token.id == FINISHED){
+                printError("ENDIF expected.");
+            }
+            skipToEndif();
+        }
+        readToken();
+    }
 }
 
-void executeElse() {
-    if (skipElse) {
-        do {
-            readToken();
-            if (token.id == FINISHED)
-                printError("Syntax error: \"END\" expected.");
-        } while (token.id != END);
-        putBack();
-        skipElse = 0;
+void executeToElseOrEndif() {
+    //readToken();
+    while (token.id != ENDIF && token.id != ELSE){
+        if (token.id == FINISHED){
+            printError("ENDIF expected.");
+        }
+        executeToken();
+        readToken();
     }
-    closeIf = 1;
+    if (token.id == ELSE){
+        skipToEndif();
+    }
+}
+
+void skipToEndif() {
+    while (token.id != ENDIF){
+        if (token.id == FINISHED){
+            printError("ENDIF expected.");
+        }
+        if (token.id == IF){
+            skipToEndif();
+        }
+        readToken();
+    }
 }
 
 void loop_push(struct loop_stack i) {
@@ -332,7 +374,7 @@ void readToken() {
     }
 
     //Првоерка разделителя
-    if (strchr(":=+-*/%()", *program)) {
+    if (strchr(":=+-*/%()<>", *program)) {
         //Ищем знак присваивания
 
         if (*program == ':') {
@@ -341,7 +383,7 @@ void readToken() {
                 *t++ = *program++;
                 *t = '\0';
             } else
-                printError("Ozhidalsya znak prisvaivaniya :="); //TODO
+                printError("\":=\" expected.");
         } else {
             *t++ = *program++;
             *t = '\0';
@@ -371,7 +413,8 @@ void readToken() {
             token.type = COMMAND;
         return;
     }
-    printError("Syntax error!"); //TODO
+
+    printError("Syntax error! Unknown token.");
 }
 
 int getIdCommand(char *command) {
@@ -512,4 +555,11 @@ void arithmetic(char operation, int *leftPart, int *rightPart) {
         default:
             break;
     }
+}
+
+void endProgram() {
+    if (loop_index != 0){
+        printError("Loop is not closed with \"END\"");
+    }
+    writeResult(outFile);
 }
