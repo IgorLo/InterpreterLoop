@@ -1,11 +1,11 @@
 i := 1
-result := 1
+result := 10
 LOOP result DO
     LOOP result DO
         i := i + 1
         IF i = 2 THEN
         i := i + 1
-        END
+        ENDIF
     END
     i := i + 1
 END

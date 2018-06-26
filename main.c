@@ -50,13 +50,13 @@ struct loop_stack {
     int target;
     char *body_cycle;
 } loops[NESTING]; //Данные LOOP
-int loop_index; //Индекс начала стека
+int loop_index; //Индекс начала стека LOOP'ов
 int count_var = 0; //Количество переменных
 struct variable {
     char name[SIZE_LEXEM];
     int value;
 } *pointer_variables; //Указатель на начало памяти хренения переменных
-char *outFile;
+char *outFile; //Указатель на строку с путём к выходному файлу
 
 //-------------------------------------------------------------
 
@@ -77,7 +77,7 @@ void multOrDiv(int *);
 void unary(int *);
 void parentheses(int *);
 void arithmetic(char, int *, int *);
-void executeLoop(), executeEnd(), executeIf(), executeThen(), executeElse(), executeEndif();
+void executeLoop(), executeEnd(), executeIf();
 void writeResult(char*);
 void executeToElseOrEndif();
 void skipToElseOrEndif();
@@ -122,27 +122,13 @@ void executeToken() {
             case IF:
                 executeIf();
                 break;
-            case THEN:
-                executeThen();
-                break;
-            case ELSE:
-                executeElse();
-                break;
             case END:
                 executeEnd();
-            case ENDIF:
-                executeEndif();
             default:
                 break;
         }
     }
 }
-
-void executeEndif() {
-
-}
-void executeThen(){}
-void executeElse(){}
 
 void writeResult(char *file_name) {
     FILE *file_in, *file_out;
@@ -446,7 +432,8 @@ struct variable *findVariable(char *name) {
         i++;
         t++;
     }
-    return NULL;
+    addVariable(name);
+    return findVariable(name);
 }
 
 struct variable *addVariable(char *name) {
@@ -462,7 +449,7 @@ struct variable *addVariable(char *name) {
 
     struct variable *result = buffer_index;
     strcpy(result->name, name);
-    result->value = NULL;
+    result->value = 0;
 
     return result;
 }
@@ -529,7 +516,7 @@ void parentheses(int *result) {
         switch (token.type) {
             case VARIABLE:
                 if (temp == NULL || temp->value == NULL){
-                    printError("Variable is not initialized.");
+                    *result = 0;
                 }
                 *result = temp->value;
                 readToken();
